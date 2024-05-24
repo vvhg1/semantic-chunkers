@@ -3,7 +3,7 @@ from typing import List
 
 import numpy as np
 
-from semantic_router.encoders.base import BaseEncoder
+# from semantic_router.encoders.base import BaseEncoder
 from semantic_chunkers.schema import Chunk
 from semantic_chunkers.chunkers.base import BaseChunker
 from semantic_chunkers.utils.text import tiktoken_length
@@ -38,7 +38,7 @@ class ChunkStatistics:
 class StatisticalChunker(BaseChunker):
     def __init__(
         self,
-        encoder: BaseEncoder,
+        encoder,
         name="statistical_chunker",
         threshold_adjustment=0.01,
         dynamic_threshold: bool = True,

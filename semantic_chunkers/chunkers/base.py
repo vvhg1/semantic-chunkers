@@ -1,5 +1,6 @@
 from typing import Any, List
 
+from sentencesplitter import SpacySentenceSplitter
 from colorama import Fore, Style
 from pydantic.v1 import BaseModel, Extra
 
@@ -10,7 +11,7 @@ from semantic_chunkers.splitters.sentence import regex_splitter
 
 class BaseChunker(BaseModel):
     name: str
-    encoder: BaseEncoder
+    # encoder: BaseEncoder
 
     class Config:
         extra = Extra.allow
@@ -19,7 +20,11 @@ class BaseChunker(BaseModel):
         raise NotImplementedError("Subclasses must implement this method")
 
     def _split(self, doc: str) -> List[str]:
-        return regex_splitter(doc)
+        # return regex_splitter(doc)
+        splits = SpacySentenceSplitter().split(doc)
+        # escape newlines
+        splits = [split.replace("\n", "\\n") for split in splits]
+        return splits
 
     def _chunk(self, splits: List[Any]) -> List[Chunk]:
         raise NotImplementedError("Subclasses must implement this method")
