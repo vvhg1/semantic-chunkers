@@ -62,7 +62,9 @@ class StatisticalChunker(BaseChunker):
         self.enable_statistics = enable_statistics
         self.statistics: ChunkStatistics
 
-    def __call__(self, docs: List[str]) -> List[List[Chunk]]:
+    def __call__(
+        self, docs: List[List[str]]
+    ) -> tuple[List[List[Chunk]], List[List[int]]]:
         """Chunk documents into smaller chunks based on semantic similarity.
 
         :param docs: list of text documents to be split, if only wanted to
@@ -74,16 +76,18 @@ class StatisticalChunker(BaseChunker):
             raise ValueError("At least one document is required for splitting.")
 
         all_chunks = []
+        all_split_indices = []
 
         for doc in docs:
-            token_count = tiktoken_length(doc)
-            if token_count > self.max_split_tokens:
-                logger.info(
-                    f"Single document exceeds the maximum token limit "
-                    f"of {self.max_split_tokens}. "
-                    "Splitting to sentences before semantically merging."
-                )
-            splits = self._split(doc)
+            # token_count = tiktoken_length(doc)
+            # if token_count > self.max_split_tokens:
+            #     logger.info(
+            #         f"Single document exceeds the maximum token limit "
+            #         f"of {self.max_split_tokens}. "
+            #         "Splitting to sentences before semantically merging."
+            #     )
+            splits = doc
+            splits = [split.replace("\n", "\\n") for split in splits]
             encoded_splits = self._encode_documents(splits)
             similarities = self._calculate_similarity_scores(encoded_splits)
             if self.dynamic_threshold:
@@ -91,8 +95,10 @@ class StatisticalChunker(BaseChunker):
             else:
                 self.calculated_threshold = self.encoder.score_threshold
             split_indices = self._find_split_indices(similarities=similarities)
-            doc_chunks = self._split_documents(splits, split_indices, similarities)
-
+            doc_chunks, final_splits = self._split_documents(
+                splits, split_indices, similarities
+            )
+            all_split_indices.append(final_splits)
             if self.plot_chunks:
                 self.plot_similarity_scores(similarities, split_indices, doc_chunks)
 
@@ -100,7 +106,7 @@ class StatisticalChunker(BaseChunker):
                 print(self.statistics)
             all_chunks.append(doc_chunks)
 
-        return all_chunks
+        return all_chunks, all_split_indices
 
     def _encode_documents(self, docs: List[str]) -> np.ndarray:
         """
@@ -227,6 +233,7 @@ class StatisticalChunker(BaseChunker):
         chunks_by_max_chunk_size = 0
         chunks_by_last_split = 0
 
+        final_split_indices = []
         for doc_idx, doc in enumerate(docs):
             doc_token_count = token_counts[doc_idx]
             logger.debug(f"Accumulative token count: {current_tokens_count} tokens")
@@ -254,6 +261,7 @@ class StatisticalChunker(BaseChunker):
                             token_count=current_tokens_count,
                         )
                     )
+                    final_split_indices.append(doc_idx)
                     logger.debug(
                         f"Chunk finalized with {current_tokens_count} tokens due to "
                         f"threshold {self.calculated_threshold}."
@@ -273,6 +281,7 @@ class StatisticalChunker(BaseChunker):
                             token_count=current_tokens_count,
                         )
                     )
+                    final_split_indices.append(doc_idx)
                     chunks_by_max_chunk_size += 1
                     logger.debug(
                         f"Chink finalized with {current_tokens_count} tokens due to "
@@ -293,6 +302,8 @@ class StatisticalChunker(BaseChunker):
                     token_count=current_tokens_count,
                 )
             )
+            if doc_idx not in final_split_indices:
+                final_split_indices.append(doc_idx)
             chunks_by_last_split += 1
             logger.debug(
                 f"Final split added with {current_tokens_count} "
@@ -337,7 +348,7 @@ class StatisticalChunker(BaseChunker):
             chunks_by_similarity_ratio=chunks_by_similarity_ratio,
         )
 
-        return chunks
+        return chunks, final_split_indices
 
     def plot_similarity_scores(
         self,
