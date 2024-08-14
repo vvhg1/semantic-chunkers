@@ -1,6 +1,6 @@
 from typing import Any, List
 
-from sentencesplitter import SpacySentenceSplitter
+from modules.sentencesplitter import SpacySentenceSplitter
 from colorama import Fore, Style
 from pydantic.v1 import BaseModel, Extra
 
